@@ -30,9 +30,15 @@
   --danger:#ff5b6d;
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",system-ui,sans-serif}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",system-ui,sans-serif;-webkit-text-size-adjust:100%}
 body{overflow:hidden}
 button,input,textarea{font:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/*
+  iPhone Safariの入力ズーム対策。
+  iOSは16px未満のinput/textareaにフォーカスすると、画面をぐっと拡大する。
+  補足欄も本文欄も「触った位置のまま入力できる」ことを優先して、入力系は16px以上に固定する。
+*/
+input,textarea,select{font-size:16px}
 button{cursor:pointer}
 .app{
   height:100dvh;
@@ -125,17 +131,19 @@ button{cursor:pointer}
   border:0;
   background:transparent;
   color:var(--text);
-  font-size:15px;
+  font-size:16px;
   font-weight:760;
   outline:none;
 }
 .note{
   width:100%;
   margin-top:2px;
+  min-height:34px;
   border:0;
   background:transparent;
   color:var(--sub);
-  font-size:11px;
+  font-size:16px;
+  line-height:1.35;
   outline:none;
 }
 .actions{display:flex;gap:4px}
