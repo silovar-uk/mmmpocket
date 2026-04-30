@@ -13,7 +13,7 @@
   役割は「発散 → 階層化 → MMM JSONに渡す」だけ。
 
   メタファー:
-  - Pocket Lite = 軽量Training Mode
+  - Pocket Lite = 軽量メモモード
   - Inbox = ENTRY
   - Outline = COMMAND LIST
   - Send = BATTLE SETTINGS
@@ -71,8 +71,34 @@ button{cursor:pointer}
   min-height:0;
   overflow:auto;
   -webkit-overflow-scrolling:touch;
-  padding:10px 10px 92px;
+  /* 下部固定入力＋ナビのぶんだけ余白を確保。最後の行が入力欄に隠れないようにする。 */
+  padding:10px 10px 176px;
 }
+.composer{
+  position:fixed;
+  left:0;right:0;
+  bottom:calc(62px + env(safe-area-inset-bottom,0px));
+  z-index:12;
+  padding:8px;
+  border-top:1px solid rgba(104,228,255,.18);
+  background:linear-gradient(180deg,rgba(8,13,20,.78),rgba(4,6,10,.98));
+  backdrop-filter:blur(10px);
+}
+.composer-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center}
+.composer-hint{
+  min-height:18px;
+  margin-top:5px;
+  color:var(--sub);
+  font-size:11px;
+  font-weight:760;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.composer .btn{min-height:42px;padding:7px 9px}
+.composer .btn.child{border-color:rgba(255,228,94,.5);color:#fff5b0}
+.composer .btn.child.ready{background:linear-gradient(180deg,#fff28a,var(--yellow));color:#101000}
+.composer .btn:disabled{opacity:.38;filter:grayscale(1)}
 .mode-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:10px}
 .mode-title{font-size:18px;font-weight:1000;line-height:1.2}
 .mode-sub{margin-top:3px;color:var(--sub);font-size:11px;line-height:1.45}
@@ -93,7 +119,7 @@ button{cursor:pointer}
   font-size:16px;
   outline:none;
 }
-.add-input:focus,.item-text:focus,.title:focus{
+.add-input:focus,.item-text:focus,.note:focus,.title:focus{
   border-color:rgba(56,230,255,.75);
   outline:2px solid rgba(56,230,255,.12);
 }
@@ -117,13 +143,59 @@ button{cursor:pointer}
 .stat span{display:block;margin-top:4px;color:var(--sub);font-size:10px}
 .list{display:flex;flex-direction:column;gap:7px;margin-top:10px}
 .item{
-  border:1px solid rgba(104,228,255,.18);
+  --depth-solid:#38e6ff;
+  --depth-rgb:56,230,255;
+  border:1px solid rgba(var(--depth-rgb),.24);
   border-radius:14px;
-  background:rgba(255,255,255,.035);
+  background:
+    linear-gradient(90deg, rgba(var(--depth-rgb),.10), rgba(255,255,255,.035) 18%),
+    rgba(255,255,255,.035);
+  box-shadow:inset 4px 0 0 rgba(var(--depth-rgb),.58);
   padding:7px;
 }
-.item.selected{outline:1px solid rgba(56,230,255,.5);background:rgba(56,230,255,.08)}
+.item.selected{
+  outline:1px solid rgba(var(--depth-rgb),.68);
+  background:
+    linear-gradient(90deg, rgba(var(--depth-rgb),.16), rgba(var(--depth-rgb),.05) 22%),
+    rgba(255,255,255,.05);
+}
+.item.depth-0{--depth-solid:#63d8ff;--depth-rgb:99,216,255}
+.item.depth-1{--depth-solid:#ffe45e;--depth-rgb:255,228,94}
+.item.depth-2{--depth-solid:#5ff2a9;--depth-rgb:95,242,169}
+.item.depth-3{--depth-solid:#b58cff;--depth-rgb:181,140,255}
+.item.depth-4{--depth-solid:#ff9ad7;--depth-rgb:255,154,215}
+.item.depth-5{--depth-solid:#ffb35e;--depth-rgb:255,179,94}
+.item.depth-6{--depth-solid:#ff7b89;--depth-rgb:255,123,137}
 .item-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.node-wrap{
+  min-width:0;
+  display:grid;
+  grid-template-columns:var(--indent,0px) minmax(0,1fr);
+  align-items:stretch;
+}
+.branch{position:relative;min-height:100%}
+.branch.has-depth::before{
+  content:"";
+  position:absolute;
+  left:calc(100% - 10px);
+  top:6px;bottom:6px;
+  width:2px;
+  border-radius:999px;
+  background:rgba(var(--depth-rgb),.34);
+}
+.text-cell{min-width:0}
+.meta-row{display:flex;align-items:center;gap:6px;min-height:18px;margin-top:1px}
+.level-badge{
+  flex:0 0 auto;
+  border:1px solid rgba(var(--depth-rgb),.34);
+  border-radius:999px;
+  padding:1px 6px;
+  color:var(--depth-solid);
+  background:rgba(var(--depth-rgb),.10);
+  font-size:10px;
+  font-weight:900;
+}
+.level-badge.root{color:#dff7ff;background:rgba(var(--depth-rgb),.14)}
 .check{width:24px;height:24px;accent-color:var(--cyan)}
 .item-text{
   width:100%;
@@ -146,11 +218,11 @@ button{cursor:pointer}
   line-height:1.35;
   outline:none;
 }
-.actions{display:flex;gap:4px}
+.actions{display:flex;gap:4px;align-items:center}
 .mini{min-width:32px;min-height:32px;padding:3px 6px;border-radius:9px;font-size:11px}
 .outline-main{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px}
 .indent{width:var(--indent,0px)}
-.outline-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:6px}
+.outline-actions{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:6px}
 .bulk{
   display:none;
   position:sticky;
@@ -171,7 +243,7 @@ button{cursor:pointer}
 .preview{
   margin-top:10px;
   white-space:pre-wrap;
-  max-height:260px;
+  max-height:220px;
   overflow:auto;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   color:#d6dee8;
@@ -209,7 +281,7 @@ button{cursor:pointer}
 .bottom button.active{border-color:rgba(255,228,94,.65);background:linear-gradient(180deg,#fff28a,var(--yellow));color:#101000}
 .toast{
   position:fixed;
-  left:12px;right:12px;bottom:82px;
+  left:12px;right:12px;bottom:calc(142px + env(safe-area-inset-bottom,0px));
   display:none;
   z-index:20;
   padding:10px;
@@ -224,7 +296,7 @@ button{cursor:pointer}
 .toast.show{display:block}
 .empty{text-align:center;color:var(--sub);font-size:12px;line-height:1.6;margin:20px 4px}
 @media (max-width:360px){
-  .outline-actions{grid-template-columns:repeat(2,1fr)}
+  .outline-actions{grid-template-columns:repeat(3,1fr)}
   .stats{grid-template-columns:1fr}
 }
 </style>
@@ -232,10 +304,18 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <header class="header">
-    <div class="kicker">MMM POCKET LITE / TRAINING MODE</div>
+    <div class="kicker">MMM POCKET LITE</div>
     <input id="title" class="title" value="今日のメモ" autocomplete="off">
   </header>
   <main id="main" class="main"></main>
+  <div id="composer" class="composer">
+    <div class="composer-row">
+      <input id="add" class="add-input" placeholder="思いついたことを書く..." autocomplete="off">
+      <button class="btn primary" data-act="add-root">追加</button>
+      <button id="addChildBtn" class="btn child" data-act="add-child" disabled>子追加</button>
+    </div>
+    <div id="composerHint" class="composer-hint">1件選ぶと、その直下に子階層として追加できます。</div>
+  </div>
   <nav class="bottom">
     <button data-mode="inbox" class="active">Inbox</button>
     <button data-mode="outline">Outline</button>
@@ -278,12 +358,51 @@ button{cursor:pointer}
   function selectedSet(){return new Set(state.selected.filter(id=>state.items.some(i=>i.id===id)))}
   function item(id){return state.items.find(i=>i.id===id)}
   function reindex(){state.items.forEach((i,idx)=>i.order=idx+1); state.selected=[...selectedSet()]}
-  function add(text){
+  function singleSelectedId(){
+    const ids=[...selectedSet()];
+    return ids.length===1?ids[0]:null;
+  }
+  function childInsertIndex(parentId){
+    const pi=state.items.findIndex(x=>x.id===parentId);
+    if(pi<0) return -1;
+    const parentDepth=state.items[pi].depth;
+    let n=pi+1;
+    while(n<state.items.length && state.items[n].depth>parentDepth) n++;
+    return n;
+  }
+  function add(text,parentId=null){
     const t=String(text||'').trim();
-    if(!t) return;
-    state.items.unshift({id:uid(),text:t,note:'',depth:0,status:'none',order:1,createdAt:Date.now()});
-    reindex(); save(); render(); toast('ADD');
+    if(!t) return null;
+    const parent=parentId?item(parentId):null;
+    const next={id:uid(),text:t,note:'',depth:parent?Math.min(6,parent.depth+1):0,status:'none',order:1,createdAt:Date.now()};
+    if(parent){
+      const at=childInsertIndex(parent.id);
+      state.items.splice(at<0?state.items.length:at,0,next);
+      state.selected=[parent.id];
+    }else{
+      state.items.unshift(next);
+      state.selected=[next.id];
+    }
+    reindex(); save(); render(); toast(parent?'子階層に追加':'ADD');
     setTimeout(()=>document.getElementById('add')?.focus(),30);
+    return next;
+  }
+  function addFromComposer(asChild){
+    const input=document.getElementById('add');
+    const text=input?.value||'';
+    const parentId=asChild?singleSelectedId():null;
+    if(asChild && !parentId){toast('親を1件だけ選んで');return}
+    const added=add(text,parentId);
+    if(added && input) input.value='';
+  }
+  function focusChildTarget(id){
+    if(!item(id)) return;
+    state.selected=[id];
+    save(); render();
+    setTimeout(()=>{
+      const input=document.getElementById('add');
+      if(input){input.placeholder='「'+(item(id)?.text||'選択項目')+'」の子として追加...';input.focus()}
+    },30);
   }
   function del(id){state.items=state.items.filter(i=>i.id!==id); reindex(); save(); render()}
   function move(id,d){
@@ -320,7 +439,7 @@ button{cursor:pointer}
   }
   function bulk(){
     const c=selectedSet().size;
-    return `<div class="bulk ${c?'show':''}"><div class="bulk-count">${c}件選択中</div><div class="bulk-actions"><button class="btn mini primary" data-act="bundle">束ねる</button><button class="btn mini" data-act="clear">解除</button></div></div>`;
+    return `<div class="bulk ${c?'show':''}"><div class="bulk-count">${c}件選択中</div><div class="bulk-actions"><button class="btn mini primary" data-act="bundle">束ねる</button><button class="btn mini" data-act="clear-selected">解除</button></div></div>`;
   }
   function render(){
     document.getElementById('title').value=state.title;
@@ -329,6 +448,17 @@ button{cursor:pointer}
     if(state.mode==='inbox') main.innerHTML=inbox();
     else if(state.mode==='outline') main.innerHTML=outline();
     else main.innerHTML=send();
+    updateComposer();
+  }
+  function updateComposer(){
+    const hint=document.getElementById('composerHint');
+    const btn=document.getElementById('addChildBtn');
+    const id=singleSelectedId();
+    const p=id?item(id):null;
+    if(btn){btn.disabled=!p;btn.classList.toggle('ready',!!p)}
+    if(hint){
+      hint.textContent=p?'子追加先：'+p.text:'1件選ぶと、その直下に子階層として追加できます。';
+    }
   }
   function head(title,sub){
     const s=stats();
@@ -337,13 +467,20 @@ button{cursor:pointer}
   }
   function inbox(){
     return `${head('ENTRY / Inbox','まず出す。軽く書く。')}
-    <div class="card"><div class="add-row"><input id="add" class="add-input" placeholder="思いついたことを書く..." autocomplete="off"><button class="btn primary" data-act="add">追加</button></div></div>
     ${bulk()}<div class="list">${state.items.length?state.items.map(inboxItem).join(''):'<div class="empty">まだメモがありません。</div>'}</div>`;
+  }
+  function hierarchyInputs(i){
+    const ind=Math.min(112,i.depth*18);
+    const badge=i.depth?`<span class="level-badge">L${i.depth+1}</span>`:`<span class="level-badge root">ROOT</span>`;
+    return `<div class="node-wrap" style="--indent:${ind}px"><span class="branch ${i.depth?'has-depth':''}"></span><div class="text-cell">
+      <input class="item-text" data-text="${i.id}" value="${esc(i.text)}">
+      <div class="meta-row">${badge}<input class="note" data-note="${i.id}" value="${esc(i.note)}" placeholder="補足"></div>
+    </div></div>`;
   }
   function inboxItem(i){
     const sel=selectedSet().has(i.id);
-    return `<article class="item ${sel?'selected':''}">
-      <div class="item-row"><input class="check" type="checkbox" data-sel="${i.id}" ${sel?'checked':''}><div><input class="item-text" data-text="${i.id}" value="${esc(i.text)}"><input class="note" data-note="${i.id}" value="${esc(i.note)}" placeholder="補足"></div><button class="btn mini danger" data-del="${i.id}">削除</button></div>
+    return `<article class="item depth-${Math.min(6,i.depth)} ${sel?'selected':''}">
+      <div class="item-row"><input class="check" type="checkbox" data-sel="${i.id}" ${sel?'checked':''}>${hierarchyInputs(i)}<div class="actions"><button class="btn mini" data-child="${i.id}">＋子</button><button class="btn mini danger" data-del="${i.id}">削除</button></div></div>
     </article>`;
   }
   function outline(){
@@ -351,17 +488,18 @@ button{cursor:pointer}
     ${bulk()}<div class="list">${state.items.length?state.items.map(outlineItem).join(''):'<div class="empty">Inboxでメモを追加。</div>'}</div>`;
   }
   function outlineItem(i){
-    const sel=selectedSet().has(i.id), ind=Math.min(96,i.depth*18);
-    return `<article class="item ${sel?'selected':''}">
+    const sel=selectedSet().has(i.id);
+    return `<article class="item depth-${Math.min(6,i.depth)} ${sel?'selected':''}">
       <div class="outline-main"><input class="check" type="checkbox" data-sel="${i.id}" ${sel?'checked':''}><div>
-        <div style="display:grid;grid-template-columns:${ind}px minmax(0,1fr)"><span></span><input class="item-text" data-text="${i.id}" value="${esc(i.text)}"></div>
-        <div class="outline-actions"><button class="btn mini" data-up="${i.id}">↑</button><button class="btn mini" data-down="${i.id}">↓</button><button class="btn mini" data-out="${i.id}">←</button><button class="btn mini" data-in="${i.id}">→</button></div>
+        ${hierarchyInputs(i)}
+        <div class="outline-actions"><button class="btn mini" data-up="${i.id}">↑</button><button class="btn mini" data-down="${i.id}">↓</button><button class="btn mini" data-out="${i.id}">←</button><button class="btn mini" data-in="${i.id}">→</button><button class="btn mini" data-child="${i.id}">＋子</button></div>
       </div></div>
     </article>`;
   }
-  function preview(){
-    return state.title+'\\n'+state.items.map(i=>'  '.repeat(i.depth)+'- '+i.text+(i.note?' / '+i.note:'')).join('\\n');
+  function toText(){
+    return state.title+'\n'+state.items.map(i=>'  '.repeat(i.depth)+'- '+i.text+(i.note?'\n'+'  '.repeat(i.depth+1)+'補足: '+i.note:'')).join('\n');
   }
+  function preview(){return toText()}
   function send(){
     const data=toMMM();
     const payload=JSON.stringify(data);
@@ -369,10 +507,11 @@ button{cursor:pointer}
     <div class="card"><div class="stats"><div class="stat"><strong>${data.nodes.length}</strong><span>ノード</span></div><div class="stat"><strong>${data.edges.length}</strong><span>線</span></div><div class="stat"><strong>${payload.length}</strong><span>JSON文字</span></div></div>
     <div class="handoff">
       <div class="handoff-title">PC版MMMへ渡す</div>
-      <ol class="handoff-steps"><li>「MMM JSONコピー」または「JSON保存」</li><li>PC版MMMで「Pocket Lite取込」</li><li>貼り付け/ファイル選択して読み込み</li></ol>
+      <ol class="handoff-steps"><li>MMMへ渡すならJSON</li><li>議事録・共有・ChatGPT投入ならテキスト</li><li>不要なときは全削除でリセット</li></ol>
     </div>
     <div class="add-row" style="margin-top:8px"><button class="btn primary" data-act="copy-json">MMM JSONコピー</button><button class="btn" data-act="save-json">JSON保存</button></div>
-    <div class="add-row" style="margin-top:7px"><button class="btn" data-act="copy-pocket">Pocket保存JSON</button><button class="btn warn" data-act="clear">初期化</button></div>
+    <div class="add-row" style="margin-top:7px"><button class="btn primary" data-act="copy-text">テキストコピー</button><button class="btn" data-act="save-text">テキスト保存</button></div>
+    <div class="add-row" style="margin-top:7px"><button class="btn" data-act="copy-pocket">Pocket保存JSON</button><button class="btn danger" data-act="reset-all">全削除</button></div>
     <pre class="preview">${esc(preview())}</pre></div>`;
   }
   function toMMM(){
@@ -389,9 +528,9 @@ button{cursor:pointer}
   async function copy(text,msg){
     try{await navigator.clipboard.writeText(text);toast(msg||'コピーしました')}catch(e){toast('コピー失敗')}
   }
-  function saveFile(text,filename){
+  function saveFile(text,filename,type='application/json'){
     try{
-      const blob=new Blob([text],{type:'application/json'});
+      const blob=new Blob([text],{type});
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=url; a.download=filename; a.click();
@@ -402,13 +541,17 @@ button{cursor:pointer}
   document.addEventListener('click',e=>{
     const t=e.target;
     if(t.dataset.mode){state.mode=t.dataset.mode;save();render();return}
-    if(t.dataset.act==='add'){add(document.getElementById('add')?.value);return}
+    if(t.dataset.act==='add-root'){addFromComposer(false);return}
+    if(t.dataset.act==='add-child'){addFromComposer(true);return}
     if(t.dataset.act==='bundle'){bundle();return}
-    if(t.dataset.act==='clear'){state.selected=[];save();render();return}
+    if(t.dataset.act==='clear-selected'){state.selected=[];save();render();return}
     if(t.dataset.act==='copy-json'){copy(JSON.stringify(toMMM(),null,2),'MMM JSONコピー');return}
     if(t.dataset.act==='save-json'){saveFile(JSON.stringify(toMMM(),null,2),'mmm-pocket-lite-map.json');return}
+    if(t.dataset.act==='copy-text'){copy(toText(),'テキストコピー');return}
+    if(t.dataset.act==='save-text'){saveFile(toText(),'mmm-pocket-lite.txt','text/plain');return}
     if(t.dataset.act==='copy-pocket'){copy(JSON.stringify(state,null,2),'Pocket JSONコピー');return}
-    if(t.dataset.act==='clear'){if(confirm('Pocket Liteを初期化しますか？')){state=fresh();save();render();toast('初期化')}}
+    if(t.dataset.act==='reset-all'){if(confirm('Pocket Liteのメモを全削除しますか？')){state=fresh();localStorage.removeItem(KEY);save();render();toast('全削除')}}
+    if(t.dataset.child){focusChildTarget(t.dataset.child);return}
     if(t.dataset.del){del(t.dataset.del);return}
     if(t.dataset.up){move(t.dataset.up,-1);return}
     if(t.dataset.down){move(t.dataset.down,1);return}
@@ -422,7 +565,7 @@ button{cursor:pointer}
     if(t.dataset.text){const i=item(t.dataset.text); if(i){i.text=t.value;save()};return}
     if(t.dataset.note){const i=item(t.dataset.note); if(i){i.note=t.value;save()};return}
   },{passive:true});
-  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='add'){e.preventDefault();add(e.target.value);e.target.value=''}});
+  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='add'){e.preventDefault();addFromComposer(false)}});
   render();
 })();
 </script>
