@@ -240,6 +240,14 @@ button{cursor:pointer}
 .bulk.show{display:flex}
 .bulk-count{font-size:12px;font-weight:900;color:#effcff}
 .bulk-actions{display:flex;gap:5px}
+.select-tools{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+  margin:8px 0 9px;
+}
+.select-tools .btn{min-height:36px;padding:6px 8px}
+.select-tools .btn.danger{border-color:rgba(255,91,109,.55);background:rgba(255,91,109,.08)}
 .preview{
   margin-top:10px;
   white-space:pre-wrap;
@@ -439,7 +447,24 @@ button{cursor:pointer}
   }
   function bulk(){
     const c=selectedSet().size;
-    return `<div class="bulk ${c?'show':''}"><div class="bulk-count">${c}件選択中</div><div class="bulk-actions"><button class="btn mini primary" data-act="bundle">束ねる</button><button class="btn mini" data-act="clear-selected">解除</button></div></div>`;
+    return `<div class="bulk ${c?'show':''}"><div class="bulk-count">${c}件選択中</div><div class="bulk-actions"><button class="btn mini primary" data-act="bundle">束ねる</button><button class="btn mini danger" data-act="delete-selected">削除</button><button class="btn mini" data-act="clear-selected">解除</button></div></div>`;
+  }
+  function inboxTools(){
+    const c=selectedSet().size;
+    return `<div class="select-tools"><button class="btn" data-act="select-all">全選択</button><button class="btn" data-act="clear-selected">全解除</button><button class="btn danger" data-act="delete-selected">選択削除${c?'（'+c+'）':''}</button></div>`;
+  }
+  function selectAll(){
+    if(!state.items.length){toast('メモがありません');return}
+    state.selected=state.items.map(i=>i.id);
+    save(); render(); toast('全選択');
+  }
+  function deleteSelected(){
+    const set=selectedSet();
+    if(!set.size){toast('削除するメモを選んで');return}
+    if(!confirm(set.size+'件の選択メモを削除しますか？')) return;
+    state.items=state.items.filter(i=>!set.has(i.id));
+    state.selected=[];
+    reindex(); save(); render(); toast('選択削除');
   }
   function render(){
     document.getElementById('title').value=state.title;
@@ -467,7 +492,7 @@ button{cursor:pointer}
   }
   function inbox(){
     return `${head('ENTRY / Inbox','まず出す。軽く書く。')}
-    ${bulk()}<div class="list">${state.items.length?state.items.map(inboxItem).join(''):'<div class="empty">まだメモがありません。</div>'}</div>`;
+    ${inboxTools()}${bulk()}<div class="list">${state.items.length?state.items.map(inboxItem).join(''):'<div class="empty">まだメモがありません。</div>'}</div>`;
   }
   function hierarchyInputs(i){
     const ind=Math.min(112,i.depth*18);
@@ -544,6 +569,8 @@ button{cursor:pointer}
     if(t.dataset.act==='add-root'){addFromComposer(false);return}
     if(t.dataset.act==='add-child'){addFromComposer(true);return}
     if(t.dataset.act==='bundle'){bundle();return}
+    if(t.dataset.act==='select-all'){selectAll();return}
+    if(t.dataset.act==='delete-selected'){deleteSelected();return}
     if(t.dataset.act==='clear-selected'){state.selected=[];save();render();return}
     if(t.dataset.act==='copy-json'){copy(JSON.stringify(toMMM(),null,2),'MMM JSONコピー');return}
     if(t.dataset.act==='save-json'){saveFile(JSON.stringify(toMMM(),null,2),'mmm-pocket-lite-map.json');return}
