@@ -5,199 +5,47 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>MMM Pocket Lite</title>
 <style>
-/*
-  MMM Pocket Lite
-  ----------------
-  スマホで入力できないほど重い問題への回答。
-  ここではMMM本体・SVGキャンバス・旧Overlay・監視系パッチを読み込まない。
-  役割は「発散 → 階層化 → MMM JSONに渡す」だけ。
-
-  メタファー:
-  - Pocket Lite = 軽量メモモード
-  - Inbox = ENTRY
-  - Outline = COMMAND LIST
-  - Send = BATTLE SETTINGS
-*/
 :root{
   --bg:#060910;
-  --panel:#101722;
-  --panel2:#151e2b;
-  --line:rgba(104,228,255,.22);
+  --line:rgba(104,228,255,.18);
   --cyan:#38e6ff;
   --yellow:#ffe45e;
   --text:#f7fbff;
   --sub:#9fb0c4;
   --danger:#ff5b6d;
-  --tap:44px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",system-ui,sans-serif;-webkit-text-size-adjust:100%}
 body{overflow:hidden}
 button,input,textarea{font:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-/*
-  iPhone Safariの入力ズーム対策。
-  iOSは16px未満のinput/textareaにフォーカスすると、画面をぐっと拡大する。
-  補足欄も本文欄も「触った位置のまま入力できる」ことを優先して、入力系は16px以上に固定する。
-*/
 input,textarea,select{font-size:16px}
 button{cursor:pointer}
-.app{
-  height:100dvh;
-  display:grid;
-  grid-template-rows:auto 1fr auto;
-  background:
-    radial-gradient(circle at 16% -8%, rgba(56,230,255,.18), transparent 30%),
-    linear-gradient(180deg,#08111b,#05070b);
-}
-.header{
-  padding:10px 10px 8px;
-  border-bottom:1px solid var(--line);
-  background:linear-gradient(180deg,rgba(16,23,34,.98),rgba(7,10,16,.96));
-}
-.kicker{font-size:10px;font-weight:900;letter-spacing:.12em;color:var(--cyan)}
-.title{
-  margin-top:5px;
-  width:100%;
-  min-height:38px;
-  border:1px solid var(--line);
-  border-radius:11px;
-  padding:7px 9px;
-  background:rgba(2,7,12,.42);
-  color:var(--text);
-  font-size:16px;
-  font-weight:900;
-  outline:none;
-}
-.main{
-  min-height:0;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  /* 下部固定入力＋ナビのぶんだけ余白を確保。最後の行が入力欄に隠れないようにする。 */
-  padding:10px 10px 188px;
-}
-.composer{
-  position:fixed;
-  left:0;right:0;
-  bottom:calc(62px + env(safe-area-inset-bottom,0px));
-  z-index:12;
-  padding:8px;
-  border-top:1px solid rgba(104,228,255,.18);
-  background:linear-gradient(180deg,rgba(8,13,20,.78),rgba(4,6,10,.98));
-  backdrop-filter:blur(10px);
-}
-.composer-target{
-  display:none;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  margin-bottom:6px;
-  padding:5px 7px;
-  border:1px solid rgba(255,228,94,.28);
-  border-radius:999px;
-  background:rgba(255,228,94,.075);
-  color:#fff3aa;
-  font-size:11px;
-  font-weight:900;
-}
+.app{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;background:linear-gradient(180deg,#08111b,#05070b)}
+.header{padding:8px 10px 7px;border-bottom:1px solid rgba(104,228,255,.12);background:rgba(7,10,16,.94)}
+.title{width:100%;min-height:34px;border:0;border-radius:10px;padding:6px 4px;background:transparent;color:var(--text);font-size:17px;font-weight:900;outline:none}
+.title:focus{outline:1px solid rgba(56,230,255,.16)}
+.main{min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:8px 10px 154px}
+.mode-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:0 0 7px}
+.mode-title{font-size:16px;font-weight:950;line-height:1.2}
+.mode-count{color:rgba(159,176,196,.72);font-size:11px;font-weight:850}
+.composer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:12;padding:7px 8px;border-top:1px solid rgba(104,228,255,.12);background:linear-gradient(180deg,rgba(8,13,20,.74),rgba(4,6,10,.98));backdrop-filter:blur(10px)}
+.composer-target{display:none;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;padding:4px 6px;border-radius:999px;background:rgba(255,228,94,.055);color:rgba(255,245,176,.86);font-size:11px;font-weight:850}
 .composer-target.show{display:flex}
 .composer-target span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.composer-target button{
-  min-width:28px;min-height:28px;border:0;border-radius:999px;
-  background:rgba(255,255,255,.08);color:#fff5b0;font-size:14px;font-weight:1000;
-}
+.composer-target button{min-width:30px;min-height:30px;border:0;border-radius:999px;background:transparent;color:rgba(255,245,176,.88);font-size:15px;font-weight:1000}
 .composer-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center}
-.composer-subrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;margin-top:5px}
-.composer-hint{
-  min-height:18px;
-  color:var(--sub);
-  font-size:11px;
-  font-weight:760;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.composer .btn{min-height:42px;padding:7px 9px}
-.composer .btn.child{display:none;border-color:rgba(255,228,94,.34);color:#fff5b0;background:rgba(255,228,94,.06)}
-.composer .btn.child.ready{display:block;background:linear-gradient(180deg,#fff28a,var(--yellow));color:#101000}
-.composer .btn:disabled{opacity:.38;filter:grayscale(1)}
-.mode-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:4px}
-.mode-title{font-size:18px;font-weight:1000;line-height:1.2}
-.mode-sub{margin-top:3px;color:var(--sub);font-size:11px;line-height:1.45}
-.quick-stats{
-  display:flex;
-  gap:9px;
-  align-items:center;
-  margin:0 0 9px;
-  color:rgba(159,176,196,.86);
-  font-size:11px;
-  font-weight:850;
-  letter-spacing:.01em;
-}
-.quick-stats b{color:#eaffff;font-size:12px}
-.card{
-  border:1px solid var(--line);
-  border-radius:14px;
-  background:linear-gradient(180deg,rgba(21,30,43,.92),rgba(10,14,21,.92));
-  padding:9px;
-}
-.add-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}
-.add-input{
-  min-height:44px;
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:9px 10px;
-  background:rgba(2,7,12,.46);
-  color:var(--text);
-  font-size:16px;
-  outline:none;
-}
-.add-input:focus,.item-text:focus,.note:focus,.title:focus{
-  border-color:rgba(56,230,255,.75);
-  outline:2px solid rgba(56,230,255,.12);
-}
-.btn{
-  min-height:42px;
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:7px 10px;
-  background:linear-gradient(180deg,rgba(29,42,58,.98),rgba(9,13,19,.98));
-  color:var(--text);
-  font-size:12px;
-  font-weight:900;
-}
-.btn.primary{border-color:rgba(56,230,255,.62);background:linear-gradient(180deg,#7df2ff,var(--cyan));color:#041017}
-.btn.warn{border-color:rgba(255,228,94,.5);color:#fff5b0}
-.btn.danger{border-color:rgba(255,91,109,.5);color:#ffe7eb}
+.add-input{min-height:44px;border:1px solid rgba(104,228,255,.18);border-radius:12px;padding:9px 10px;background:rgba(2,7,12,.46);color:var(--text);font-size:16px;outline:none}
+.add-input:focus,.item-text:focus,.note:focus{border-color:rgba(56,230,255,.75);outline:2px solid rgba(56,230,255,.12)}
+.btn{min-height:42px;border:1px solid rgba(104,228,255,.16);border-radius:12px;padding:7px 10px;background:rgba(16,23,34,.86);color:var(--text);font-size:12px;font-weight:900}
+.btn.primary{border-color:rgba(56,230,255,.45);background:rgba(56,230,255,.88);color:#041017}
+.btn.danger{border-color:rgba(255,91,109,.34);color:#ffe7eb;background:rgba(255,91,109,.055)}
 .btn:active{transform:translateY(1px)}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0}
-.stat{border:1px solid rgba(104,228,255,.16);border-radius:13px;background:rgba(255,255,255,.035);padding:8px}
-.stat strong{display:block;font-size:17px;line-height:1}
-.stat span{display:block;margin-top:4px;color:var(--sub);font-size:10px}
-.list{display:flex;flex-direction:column;gap:7px;margin-top:10px}
-.item{
-  --depth-solid:#38e6ff;
-  --depth-rgb:56,230,255;
-  border:1px solid rgba(var(--depth-rgb),.18);
-  border-radius:14px;
-  background:
-    linear-gradient(90deg, rgba(var(--depth-rgb),.055), rgba(255,255,255,.025) 18%),
-    rgba(255,255,255,.028);
-  box-shadow:inset 4px 0 0 rgba(var(--depth-rgb),.50);
-  padding:7px;
-  transition:background .12s ease, outline-color .12s ease, transform .12s ease;
-}
-.item.selected{
-  outline:1px solid rgba(var(--depth-rgb),.68);
-  transform:translateY(-1px);
-  background:
-    linear-gradient(90deg, rgba(var(--depth-rgb),.15), rgba(var(--depth-rgb),.045) 22%),
-    rgba(255,255,255,.05);
-}
-.item.flash{animation:flashAdd .78s ease-out}
-@keyframes flashAdd{
-  0%{box-shadow:inset 4px 0 0 rgba(var(--depth-rgb),.95),0 0 0 2px rgba(56,230,255,.34)}
-  100%{box-shadow:inset 4px 0 0 rgba(var(--depth-rgb),.50),0 0 0 0 rgba(56,230,255,0)}
-}
+.card{border:1px solid rgba(104,228,255,.12);border-radius:14px;background:rgba(255,255,255,.025);padding:9px}
+.list{display:flex;flex-direction:column;gap:6px;margin-top:7px}
+.item{--depth-solid:#38e6ff;--depth-rgb:56,230,255;border:1px solid rgba(104,228,255,.10);border-radius:13px;background:rgba(255,255,255,.022);box-shadow:inset 3px 0 0 rgba(var(--depth-rgb),.44);padding:7px;transition:background .12s ease, outline-color .12s ease, transform .12s ease}
+.item.selected{outline:1px solid rgba(var(--depth-rgb),.48);transform:translateY(-1px);background:rgba(var(--depth-rgb),.07)}
+.item.flash{animation:flashAdd .58s ease-out}
+@keyframes flashAdd{0%{box-shadow:inset 3px 0 0 rgba(var(--depth-rgb),.95),0 0 0 2px rgba(56,230,255,.25)}100%{box-shadow:inset 3px 0 0 rgba(var(--depth-rgb),.44),0 0 0 0 rgba(56,230,255,0)}}
 .item.depth-0{--depth-solid:#63d8ff;--depth-rgb:99,216,255}
 .item.depth-1{--depth-solid:#ffe45e;--depth-rgb:255,228,94}
 .item.depth-2{--depth-solid:#5ff2a9;--depth-rgb:95,242,169}
@@ -206,162 +54,57 @@ button{cursor:pointer}
 .item.depth-5{--depth-solid:#ffb35e;--depth-rgb:255,179,94}
 .item.depth-6{--depth-solid:#ff7b89;--depth-rgb:255,123,137}
 .item-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
-.node-wrap{
-  min-width:0;
-  display:grid;
-  grid-template-columns:var(--indent,0px) minmax(0,1fr);
-  align-items:stretch;
-}
+.outline-main{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px}
+.node-wrap{min-width:0;display:grid;grid-template-columns:var(--indent,0px) minmax(0,1fr);align-items:stretch}
 .branch{position:relative;min-height:100%}
-.branch.has-depth::before{
-  content:"";
-  position:absolute;
-  left:calc(100% - 10px);
-  top:6px;bottom:6px;
-  width:2px;
-  border-radius:999px;
-  background:rgba(var(--depth-rgb),.34);
-}
+.branch.has-depth::before{content:"";position:absolute;left:calc(100% - 10px);top:6px;bottom:6px;width:2px;border-radius:999px;background:rgba(var(--depth-rgb),.34)}
 .text-cell{min-width:0}
-.meta-row{display:flex;align-items:center;gap:6px;min-height:18px;margin-top:1px}
-.level-badge{
-  flex:0 0 auto;
-  border:1px solid rgba(var(--depth-rgb),.34);
-  border-radius:999px;
-  padding:1px 6px;
-  color:var(--depth-solid);
-  background:rgba(var(--depth-rgb),.10);
-  font-size:10px;
-  font-weight:900;
-}
-.level-badge.root{color:#dff7ff;background:rgba(var(--depth-rgb),.14)}
+.meta-row{display:flex;align-items:center;gap:6px;min-height:14px;margin-top:0}
 .check{width:24px;height:24px;accent-color:var(--cyan)}
-.item-text{
-  width:100%;
-  min-height:36px;
-  border:0;
-  background:transparent;
-  color:var(--text);
-  font-size:16px;
-  font-weight:760;
-  outline:none;
-}
-.note{
-  width:100%;
-  margin-top:1px;
-  min-height:30px;
-  border:0;
-  background:transparent;
-  color:rgba(159,176,196,.74);
-  font-size:16px;
-  line-height:1.32;
-  outline:none;
-}
-.note::placeholder{color:rgba(159,176,196,.36)}
+.item-text{width:100%;min-height:34px;border:0;background:transparent;color:var(--text);font-size:16px;font-weight:760;outline:none}
+.note{width:100%;margin-top:0;min-height:24px;border:0;background:transparent;color:rgba(159,176,196,.74);font-size:16px;line-height:1.32;outline:none}
+.note::placeholder{color:rgba(159,176,196,.34)}
 .note:not(:placeholder-shown){color:var(--sub)}
 .actions{display:none;gap:4px;align-items:center}
 .item.selected .actions{display:flex}
-.mini{position:relative;min-width:32px;min-height:32px;padding:3px 6px;border-radius:9px;font-size:11px}
-.mini::after{content:"";position:absolute;inset:-6px;border-radius:14px}
-.outline-main{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px}
-.indent{width:var(--indent,0px)}
 .outline-actions{display:none;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:6px}
 .item.selected .outline-actions{display:grid}
-.bulk{
-  display:none;
-  position:sticky;
-  top:0;
-  z-index:2;
-  margin-bottom:9px;
-  border:1px solid rgba(56,230,255,.35);
-  border-radius:13px;
-  background:rgba(8,21,29,.96);
-  padding:8px;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-}
+.mini{position:relative;min-width:32px;min-height:32px;padding:3px 6px;border-radius:9px;font-size:11px}
+.mini::after{content:"";position:absolute;inset:-6px;border-radius:14px}
+.bulk{display:none;position:sticky;top:0;z-index:2;margin-bottom:7px;border:1px solid rgba(56,230,255,.16);border-radius:12px;background:rgba(8,21,29,.90);padding:6px;align-items:center;justify-content:space-between;gap:8px}
 .bulk.show{display:flex}
-.bulk-count{font-size:12px;font-weight:900;color:#effcff}
+.bulk-count{font-size:11px;font-weight:850;color:rgba(239,252,255,.82)}
 .bulk-actions{display:flex;gap:5px}
-.select-tools{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:6px;
-  margin:8px 0 9px;
-}
-.select-tools .btn{min-height:36px;padding:6px 8px}
-.select-tools .btn.danger{border-color:rgba(255,91,109,.55);background:rgba(255,91,109,.08)}
-.preview{
-  margin-top:10px;
-  white-space:pre-wrap;
-  max-height:220px;
-  overflow:auto;
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  color:#d6dee8;
-  font-size:11px;
-  line-height:1.5;
-}
-.handoff{
-  margin-top:10px;
-  border:1px solid rgba(255,228,94,.30);
-  border-radius:14px;
-  background:rgba(255,228,94,.06);
-  padding:9px;
-}
-.handoff-title{color:#fff5b0;font-size:12px;font-weight:900}
-.handoff-steps{margin:6px 0 0;padding-left:18px;color:#d6dee8;font-size:11px;line-height:1.55}
-.bottom{
-  position:fixed;
-  left:0;right:0;bottom:0;
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:6px;
-  padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));
-  border-top:1px solid var(--line);
-  background:linear-gradient(180deg,rgba(8,13,20,.84),rgba(4,6,10,.98));
-}
-.bottom button{
-  min-height:44px;
-  border:1px solid rgba(104,228,255,.2);
-  border-radius:14px;
-  background:rgba(16,23,34,.9);
-  color:var(--sub);
-  font-size:12px;
-  font-weight:900;
-}
-.bottom button span,.bottom button small{display:block;pointer-events:none;line-height:1.05}
-.bottom button small{margin-top:3px;font-size:9px;letter-spacing:.03em;opacity:.72}
-.bottom button.active{border-color:rgba(255,228,94,.65);background:linear-gradient(180deg,#fff28a,var(--yellow));color:#101000}
-.empty{text-align:center;color:var(--sub);font-size:12px;line-height:1.6;margin:20px 4px}
-@media (max-width:360px){
-  .outline-actions{grid-template-columns:repeat(3,1fr)}
-  .stats{grid-template-columns:1fr}
-}
+.undo-strip{display:none;margin:0 0 7px;padding:6px 7px;border-radius:12px;background:rgba(255,255,255,.035);align-items:center;justify-content:space-between;gap:8px}
+.undo-strip.show{display:flex}
+.undo-strip span{color:rgba(159,176,196,.84);font-size:11px;font-weight:850}
+.handoff{margin-top:8px}
+.preview{display:none;margin-top:9px;white-space:pre-wrap;max-height:220px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#d6dee8;font-size:11px;line-height:1.5}
+.bottom{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(104,228,255,.12);background:linear-gradient(180deg,rgba(8,13,20,.80),rgba(4,6,10,.98))}
+.bottom button{min-height:44px;border:1px solid rgba(104,228,255,.16);border-radius:14px;background:rgba(16,23,34,.82);color:var(--sub);font-size:12px;font-weight:900}
+.bottom button span{display:block;pointer-events:none;line-height:1.05}
+.bottom button.active{border-color:rgba(255,228,94,.48);background:rgba(255,228,94,.90);color:#101000}
+.empty{text-align:center;color:rgba(159,176,196,.70);font-size:12px;line-height:1.6;margin:20px 4px}
+@media (max-width:360px){.outline-actions{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="header">
-    <div class="kicker">MMM POCKET LITE</div>
     <input id="title" class="title" value="今日のメモ" autocomplete="off">
   </header>
   <main id="main" class="main"></main>
   <div id="composer" class="composer">
     <div id="composerTarget" class="composer-target"></div>
     <div class="composer-row">
-      <input id="add" class="add-input" placeholder="思いついたことを書く..." autocomplete="off">
-      <button class="btn primary" data-act="add-root">追加</button>
-    </div>
-    <div class="composer-subrow">
-      <div id="composerHint" class="composer-hint">1件選ぶと、その直下に子階層として追加できます。</div>
-      <button id="addChildBtn" class="btn child" data-act="add-child" disabled>子として追加</button>
+      <input id="add" class="add-input" placeholder="思いついたことを書く" autocomplete="off">
+      <button class="btn primary" data-act="add-smart">追加</button>
     </div>
   </div>
   <nav class="bottom">
-    <button data-mode="inbox" class="active"><span>書く</span><small>Inbox</small></button>
-    <button data-mode="outline"><span>整える</span><small>Outline</small></button>
-    <button data-mode="send"><span>渡す</span><small>Send</small></button>
+    <button data-mode="inbox" class="active"><span>書く</span></button>
+    <button data-mode="outline"><span>整える</span></button>
+    <button data-mode="send"><span>渡す</span></button>
   </nav>
 </div>
 <script>
@@ -371,11 +114,11 @@ button{cursor:pointer}
   let timer=0;
   let undoBuffer=null;
   let flashId=null;
+  let resetArmed=false;
+  let previewOpen=false;
   let state=load();
 
-  function fresh(){
-    return {version:1,title:'今日のメモ',mode:'inbox',selected:[],items:[],updatedAt:Date.now()};
-  }
+  function fresh(){return {version:1,title:'今日のメモ',mode:'inbox',selected:[],items:[],updatedAt:Date.now()}}
   function uid(){return 'p_'+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4)}
   function load(){
     try{
@@ -388,14 +131,8 @@ button{cursor:pointer}
       return s;
     }catch(e){return fresh()}
   }
-  function save(){
-    clearTimeout(timer);
-    timer=setTimeout(()=>localStorage.setItem(KEY,JSON.stringify({...state,updatedAt:Date.now()})),80);
-  }
+  function save(){clearTimeout(timer);timer=setTimeout(()=>localStorage.setItem(KEY,JSON.stringify({...state,updatedAt:Date.now()})),80)}
   function esc(v){return String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-  // 小さい画面では、操作後のポップアップ通知は出さない。
-  // 追加・削除・選択などは、画面上の変化そのものをフィードバックにする。
-  function toast(){ /* no popup */ }
   function pulseButton(btn,label){
     if(!btn) return;
     const original=btn.textContent;
@@ -404,19 +141,11 @@ button{cursor:pointer}
     setTimeout(()=>{btn.textContent=original;btn.disabled=false},720);
   }
   function snapshot(){return {title:state.title,mode:state.mode,selected:[...state.selected],items:state.items.map(i=>({...i}))}}
-  function restoreUndo(){
-    if(!undoBuffer) return;
-    state={...state,...undoBuffer};
-    undoBuffer=null;
-    reindex(); save(); render();
-  }
+  function restoreUndo(){if(!undoBuffer) return; state={...state,...undoBuffer}; undoBuffer=null; reindex(); save(); render()}
   function selectedSet(){return new Set(state.selected.filter(id=>state.items.some(i=>i.id===id)))}
   function item(id){return state.items.find(i=>i.id===id)}
   function reindex(){state.items.forEach((i,idx)=>i.order=idx+1); state.selected=[...selectedSet()]}
-  function singleSelectedId(){
-    const ids=[...selectedSet()];
-    return ids.length===1?ids[0]:null;
-  }
+  function singleSelectedId(){const ids=[...selectedSet()]; return ids.length===1?ids[0]:null}
   function childInsertIndex(parentId){
     const pi=state.items.findIndex(x=>x.id===parentId);
     if(pi<0) return -1;
@@ -440,26 +169,14 @@ button{cursor:pointer}
     }
     flashId=next.id;
     reindex(); save(); render();
-    setTimeout(()=>{if(flashId===next.id) flashId=null},820);
+    setTimeout(()=>{if(flashId===next.id){flashId=null;render()}},640);
     setTimeout(()=>document.getElementById('add')?.focus(),30);
     return next;
   }
-  function addFromComposer(asChild){
+  function addFromComposer(){
     const input=document.getElementById('add');
-    const text=input?.value||'';
-    const parentId=asChild?singleSelectedId():null;
-    if(asChild && !parentId) return
-    const added=add(text,parentId);
+    const added=add(input?.value||'',singleSelectedId()||null);
     if(added && input) input.value='';
-  }
-  function focusChildTarget(id){
-    if(!item(id)) return;
-    state.selected=[id];
-    save(); render();
-    setTimeout(()=>{
-      const input=document.getElementById('add');
-      if(input){input.placeholder='「'+(item(id)?.text||'選択項目')+'」の子として追加...';input.focus()}
-    },30);
   }
   function del(id){
     if(!item(id)) return;
@@ -477,49 +194,42 @@ button{cursor:pointer}
     const prev=state.items[i-1]; const max=prev?prev.depth+1:0;
     state.items[i].depth=Math.max(0,Math.min(6,state.items[i].depth+d,max)); save(); render();
   }
-  function toggle(id,checked){
-    const set=selectedSet(); checked?set.add(id):set.delete(id); state.selected=[...set]; save(); render();
-  }
+  function toggle(id,checked){const set=selectedSet(); checked?set.add(id):set.delete(id); state.selected=[...set]; save(); render()}
   function bundle(){
     const set=selectedSet(); const sel=state.items.filter(i=>set.has(i.id));
-    if(sel.length<2) return
-    const title=prompt('選んだメモを、ひとことで言うと？','新しいまとまり');
-    if(!title) return;
+    if(sel.length<2) return;
+    undoBuffer=snapshot();
     const first=Math.min(...sel.map(i=>state.items.findIndex(x=>x.id===i.id)));
     const parentDepth=Math.min(...sel.map(i=>i.depth));
     const ids=new Set(sel.map(i=>i.id));
-    const parent={id:uid(),text:title.trim(),note:'',depth:parentDepth,status:'none',order:1,createdAt:Date.now()};
+    const parent={id:uid(),text:'まとまり',note:'',depth:parentDepth,status:'none',order:1,createdAt:Date.now()};
     const before=[],after=[];
     state.items.forEach((it,idx)=>{ if(ids.has(it.id)) return; (idx<first?before:after).push(it); });
     const children=sel.map(i=>({...i,depth:Math.min(6,parentDepth+1)}));
     state.items=[...before,parent,...children,...after]; state.selected=[parent.id]; reindex(); save(); render();
   }
-  function stats(){
-    const structured=state.items.filter(i=>i.depth>0).length;
-    const actions=state.items.filter(i=>/する|確認|作成|依頼|送る|直す|決める|調整|共有|TODO|ToDo/i.test(i.text+' '+i.note)).length;
-    return {total:state.items.length,structured,actions};
+  function deleteSelected(){
+    const set=selectedSet(); if(!set.size) return;
+    undoBuffer=snapshot();
+    state.items=state.items.filter(i=>!set.has(i.id));
+    state.selected=[]; reindex(); save(); render();
   }
+  function stats(){return {total:state.items.length}}
   function bulk(){
     const c=selectedSet().size;
-    return `<div class="bulk ${c?'show':''}"><div class="bulk-count">${c}件選択中</div><div class="bulk-actions"><button class="btn mini primary" data-act="bundle">束ねる</button><button class="btn mini danger" data-act="delete-selected">削除</button><button class="btn mini" data-act="clear-selected">解除</button></div></div>`;
+    return `<div class="bulk ${c?'show':''}"><div class="bulk-count">${c}件</div><div class="bulk-actions"><button class="btn mini primary" data-act="bundle">束ねる</button><button class="btn mini danger" data-act="delete-selected">削除</button><button class="btn mini" data-act="clear-selected">解除</button></div></div>`;
   }
-  function inboxTools(){
-    const c=selectedSet().size;
-    return `<div class="select-tools"><button class="btn" data-act="select-all">全選択</button><button class="btn" data-act="clear-selected">全解除</button><button class="btn danger" data-act="delete-selected">選択削除${c?'（'+c+'）':''}</button></div>`;
-  }
-  function selectAll(){
-    if(!state.items.length) return
-    state.selected=state.items.map(i=>i.id);
-    save(); render();
-  }
-  function deleteSelected(){
-    const set=selectedSet();
-    if(!set.size) return
-    undoBuffer=snapshot();
-    const count=set.size;
-    state.items=state.items.filter(i=>!set.has(i.id));
-    state.selected=[];
-    reindex(); save(); render();
+  function undoStrip(){return `<div class="undo-strip ${undoBuffer?'show':''}"><span>削除済み</span><button class="btn mini" data-act="undo">元に戻す</button></div>`}
+  function updateComposer(){
+    const target=document.getElementById('composerTarget');
+    const input=document.getElementById('add');
+    const id=singleSelectedId();
+    const p=id?item(id):null;
+    if(target){
+      target.classList.toggle('show',!!p);
+      target.innerHTML=p?`<span>${esc(p.text||'選択中のメモ')} の下に追加</span><button data-act="clear-selected" aria-label="選択解除">×</button>`:'';
+    }
+    if(input){input.placeholder=p?`「${p.text||'選択中のメモ'}」の下に追加`:'思いついたことを書く'}
   }
   function render(){
     document.getElementById('title').value=state.title;
@@ -530,81 +240,26 @@ button{cursor:pointer}
     else main.innerHTML=send();
     updateComposer();
   }
-  function updateComposer(){
-    const hint=document.getElementById('composerHint');
-    const btn=document.getElementById('addChildBtn');
-    const target=document.getElementById('composerTarget');
-    const id=singleSelectedId();
-    const p=id?item(id):null;
-    if(btn){btn.disabled=!p;btn.classList.toggle('ready',!!p)}
-    if(target){
-      target.classList.toggle('show',!!p);
-      target.innerHTML=p?`<span>子追加先　${esc(p.text||'選択中のメモ')}</span><button data-act="clear-selected" aria-label="選択解除">×</button>`:'';
-    }
-    if(hint){
-      hint.textContent=p?'入力すると、選択中のメモの直下に入ります。':'1件選ぶと、その直下に子階層として追加できます。';
-    }
-  }
-  function head(title,sub){
-    const s=stats();
-    return `<div class="mode-head"><div><div class="mode-title">${title}</div><div class="mode-sub">${sub}</div></div></div>
-    <div class="quick-stats"><span><b>${s.total}</b>件</span><span>構造化 <b>${s.structured}</b></span><span>ACTION <b>${s.actions}</b></span></div>`;
-  }
-  function inbox(){
-    return `${head('書く / Inbox','まず出す。軽く書く。')}
-    ${inboxTools()}${bulk()}<div class="list">${state.items.length?state.items.map(inboxItem).join(''):'<div class="empty">まだメモがありません。</div>'}</div>`;
-  }
+  function head(title){const s=stats(); return `<div class="mode-head"><div class="mode-title">${title}</div><div class="mode-count">${s.total}件</div></div>`}
+  function inbox(){return `${head('書く')}${undoStrip()}${bulk()}<div class="list">${state.items.length?state.items.map(inboxItem).join(''):'<div class="empty">まだメモがありません。</div>'}</div>`}
   function hierarchyInputs(i){
     const ind=Math.min(112,i.depth*18);
-    const badge=i.depth?`<span class="level-badge">L${i.depth+1}</span>`:`<span class="level-badge root">ROOT</span>`;
-    return `<div class="node-wrap" style="--indent:${ind}px"><span class="branch ${i.depth?'has-depth':''}"></span><div class="text-cell">
-      <input class="item-text" data-text="${i.id}" value="${esc(i.text)}">
-      <div class="meta-row">${badge}<input class="note" data-note="${i.id}" value="${esc(i.note)}" placeholder="補足"></div>
-    </div></div>`;
+    return `<div class="node-wrap" style="--indent:${ind}px"><span class="branch ${i.depth?'has-depth':''}"></span><div class="text-cell"><input class="item-text" data-text="${i.id}" value="${esc(i.text)}"><div class="meta-row"><input class="note" data-note="${i.id}" value="${esc(i.note)}" placeholder="補足"></div></div></div>`;
   }
   function inboxItem(i){
     const sel=selectedSet().has(i.id);
-    return `<article class="item depth-${Math.min(6,i.depth)} ${sel?'selected':''} ${i.id===flashId?'flash':''}">
-      <div class="item-row"><input class="check" type="checkbox" data-sel="${i.id}" ${sel?'checked':''}>${hierarchyInputs(i)}<div class="actions"><button class="btn mini" data-child="${i.id}">＋子</button><button class="btn mini danger" data-del="${i.id}">削除</button></div></div>
-    </article>`;
+    return `<article class="item depth-${Math.min(6,i.depth)} ${sel?'selected':''} ${i.id===flashId?'flash':''}"><div class="item-row"><input class="check" type="checkbox" data-sel="${i.id}" ${sel?'checked':''}>${hierarchyInputs(i)}<div class="actions"><button class="btn mini danger" data-del="${i.id}">削除</button></div></div></article>`;
   }
-  function outline(){
-    return `${head('整える / Outline','↑↓で順番、←→で階層。選んだメモだけ操作を表示。')}
-    ${bulk()}<div class="list">${state.items.length?state.items.map(outlineItem).join(''):'<div class="empty">Inboxでメモを追加。</div>'}</div>`;
-  }
+  function outline(){return `${head('整える')}${undoStrip()}${bulk()}<div class="list">${state.items.length?state.items.map(outlineItem).join(''):'<div class="empty">メモがありません。</div>'}</div>`}
   function outlineItem(i){
     const sel=selectedSet().has(i.id);
-    return `<article class="item depth-${Math.min(6,i.depth)} ${sel?'selected':''} ${i.id===flashId?'flash':''}">
-      <div class="outline-main"><input class="check" type="checkbox" data-sel="${i.id}" ${sel?'checked':''}><div>
-        ${hierarchyInputs(i)}
-        <div class="outline-actions"><button class="btn mini" data-up="${i.id}">↑</button><button class="btn mini" data-down="${i.id}">↓</button><button class="btn mini" data-out="${i.id}">←</button><button class="btn mini" data-in="${i.id}">→</button><button class="btn mini" data-child="${i.id}">＋子</button></div>
-      </div></div>
-    </article>`;
+    return `<article class="item depth-${Math.min(6,i.depth)} ${sel?'selected':''} ${i.id===flashId?'flash':''}"><div class="outline-main"><input class="check" type="checkbox" data-sel="${i.id}" ${sel?'checked':''}><div>${hierarchyInputs(i)}<div class="outline-actions"><button class="btn mini" data-up="${i.id}">↑</button><button class="btn mini" data-down="${i.id}">↓</button><button class="btn mini" data-out="${i.id}">←</button><button class="btn mini" data-in="${i.id}">→</button><button class="btn mini danger" data-del="${i.id}">削除</button></div></div></div></article>`;
   }
-  function toText(){
-    return state.title+'\n'+state.items.map(i=>'  '.repeat(i.depth)+'- '+i.text+(i.note?'\n'+'  '.repeat(i.depth+1)+'補足: '+i.note:'')).join('\n');
-  }
-  function preview(){return toText()}
+  function toText(){return state.title+'\n'+state.items.map(i=>'  '.repeat(i.depth)+'- '+i.text+(i.note?'\n'+'  '.repeat(i.depth+1)+'補足: '+i.note:'')).join('\n')}
   function send(){
     const data=toMMM();
     const payload=JSON.stringify(data);
-    return `${head('渡す / Send','MMM・共有・バックアップの目的別に出力。')}
-    <div class="card">
-      <div class="stats"><div class="stat"><strong>${data.nodes.length}</strong><span>ノード</span></div><div class="stat"><strong>${data.edges.length}</strong><span>線</span></div><div class="stat"><strong>${payload.length}</strong><span>JSON文字</span></div></div>
-      <div class="handoff">
-        <div class="handoff-title">MMMで開く</div>
-        <div class="add-row" style="margin-top:7px"><button class="btn primary" data-act="copy-json">MMM JSONコピー</button><button class="btn" data-act="save-json">JSON保存</button></div>
-      </div>
-      <div class="handoff">
-        <div class="handoff-title">人に渡す・ChatGPTに入れる</div>
-        <div class="add-row" style="margin-top:7px"><button class="btn primary" data-act="copy-text">テキストコピー</button><button class="btn" data-act="save-text">テキスト保存</button></div>
-      </div>
-      <div class="handoff">
-        <div class="handoff-title">バックアップ・リセット</div>
-        <div class="add-row" style="margin-top:7px"><button class="btn" data-act="copy-pocket">Pocket保存JSON</button><button class="btn danger" data-act="reset-all">全削除</button></div>
-      </div>
-      <pre class="preview">${esc(preview())}</pre>
-    </div>`;
+    return `${head('渡す')}<div class="card"><div class="mode-count" style="margin-bottom:8px">${data.nodes.length}ノード / ${payload.length}文字</div><div class="handoff"><button class="btn primary" style="width:100%" data-act="copy-json">MMM JSONコピー</button></div><div class="handoff"><button class="btn primary" style="width:100%" data-act="copy-text">テキストコピー</button></div><div class="handoff"><button class="btn" style="width:100%" data-act="save-json">保存</button></div><div class="handoff"><button class="btn" style="width:100%" data-act="toggle-preview">プレビュー</button></div><div class="handoff"><button class="btn danger" style="width:100%" data-act="reset-all">${resetArmed?'もう一度タップ':'全削除'}</button></div><pre class="preview" style="display:${previewOpen?'block':'none'}">${esc(toText())}</pre></div>`;
   }
   function toMMM(){
     const root={id:'pocket_root',label:state.title||'Pocket',subtext:'Pocket Liteから変換',status:'none',collapsed:false,fitMode:'shrink',order:1,x:0,y:0};
@@ -617,42 +272,27 @@ button{cursor:pointer}
     });
     return {schemaVersion:'1.0',meta:{title:state.title||'Pocket',layoutMode:'horizontal',hideDone:false,focusMode:false,focusNodeId:null,presentationMode:false,coloringMode:'manual'},nodes,edges};
   }
-  async function copy(text,btn){
-    try{
-      await navigator.clipboard.writeText(text);
-      pulseButton(btn,'コピー済');
-    }catch(e){
-      pulseButton(btn,'失敗');
-    }
-  }
+  async function copy(text,btn){try{await navigator.clipboard.writeText(text);pulseButton(btn,'コピー済')}catch(e){pulseButton(btn,'失敗')}}
   function saveFile(text,filename,type='application/json',btn=null){
-    try{
-      const blob=new Blob([text],{type});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');
-      a.href=url; a.download=filename; a.click();
-      setTimeout(()=>URL.revokeObjectURL(url),500);
-      pulseButton(btn,'保存');
-    }catch(e){
-      pulseButton(btn,'失敗');
-    }
+    try{const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),500);pulseButton(btn,'保存済')}
+    catch(e){pulseButton(btn,'失敗')}
   }
   document.addEventListener('click',e=>{
     const t=e.target;
     if(t.dataset.mode){state.mode=t.dataset.mode;save();render();return}
-    if(t.dataset.act==='add-root'){addFromComposer(false);return}
-    if(t.dataset.act==='add-child'){addFromComposer(true);return}
+    if(t.dataset.act==='add-smart'){addFromComposer();return}
     if(t.dataset.act==='bundle'){bundle();return}
-    if(t.dataset.act==='select-all'){selectAll();return}
     if(t.dataset.act==='delete-selected'){deleteSelected();return}
+    if(t.dataset.act==='undo'){restoreUndo();return}
     if(t.dataset.act==='clear-selected'){state.selected=[];save();render();return}
     if(t.dataset.act==='copy-json'){copy(JSON.stringify(toMMM(),null,2),t);return}
-    if(t.dataset.act==='save-json'){saveFile(JSON.stringify(toMMM(),null,2),'mmm-pocket-lite-map.json','application/json',t);return}
     if(t.dataset.act==='copy-text'){copy(toText(),t);return}
-    if(t.dataset.act==='save-text'){saveFile(toText(),'mmm-pocket-lite.txt','text/plain',t);return}
-    if(t.dataset.act==='copy-pocket'){copy(JSON.stringify(state,null,2),t);return}
-    if(t.dataset.act==='reset-all'){if(confirm('Pocket Liteのメモを全削除しますか？')){state=fresh();localStorage.removeItem(KEY);save();render();}}
-    if(t.dataset.child){focusChildTarget(t.dataset.child);return}
+    if(t.dataset.act==='save-json'){saveFile(JSON.stringify(toMMM(),null,2),'mmm-pocket-lite-map.json','application/json',t);return}
+    if(t.dataset.act==='toggle-preview'){previewOpen=!previewOpen;render();return}
+    if(t.dataset.act==='reset-all'){
+      if(!resetArmed){resetArmed=true;render();setTimeout(()=>{resetArmed=false;render()},1800);return}
+      state=fresh();localStorage.removeItem(KEY);resetArmed=false;undoBuffer=null;save();render();return
+    }
     if(t.dataset.del){del(t.dataset.del);return}
     if(t.dataset.up){move(t.dataset.up,-1);return}
     if(t.dataset.down){move(t.dataset.down,1);return}
@@ -666,7 +306,7 @@ button{cursor:pointer}
     if(t.dataset.text){const i=item(t.dataset.text); if(i){i.text=t.value;save()};return}
     if(t.dataset.note){const i=item(t.dataset.note); if(i){i.note=t.value;save()};return}
   },{passive:true});
-  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='add'){e.preventDefault();addFromComposer(false)}});
+  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='add'){e.preventDefault();addFromComposer()}});
   render();
 })();
 </script>
