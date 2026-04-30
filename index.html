@@ -333,33 +333,6 @@ button{cursor:pointer}
 .bottom button span,.bottom button small{display:block;pointer-events:none;line-height:1.05}
 .bottom button small{margin-top:3px;font-size:9px;letter-spacing:.03em;opacity:.72}
 .bottom button.active{border-color:rgba(255,228,94,.65);background:linear-gradient(180deg,#fff28a,var(--yellow));color:#101000}
-.toast{
-  position:fixed;
-  left:12px;right:12px;bottom:calc(142px + env(safe-area-inset-bottom,0px));
-  display:none;
-  z-index:20;
-  padding:10px;
-  border:1px solid var(--line);
-  border-radius:14px;
-  background:rgba(7,10,16,.96);
-  color:var(--text);
-  text-align:center;
-  font-size:12px;
-  font-weight:800;
-  transform:translateY(6px);
-}
-.toast.show{display:flex;align-items:center;justify-content:center;gap:8px;animation:toastIn .16s ease-out forwards}
-.toast-undo{
-  min-height:30px;
-  border:1px solid rgba(255,228,94,.45);
-  border-radius:999px;
-  background:rgba(255,228,94,.10);
-  color:#fff5b0;
-  font-size:11px;
-  font-weight:1000;
-  padding:4px 9px;
-}
-@keyframes toastIn{from{opacity:.78;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .empty{text-align:center;color:var(--sub);font-size:12px;line-height:1.6;margin:20px 4px}
 @media (max-width:360px){
   .outline-actions{grid-template-columns:repeat(3,1fr)}
@@ -391,12 +364,11 @@ button{cursor:pointer}
     <button data-mode="send"><span>渡す</span><small>Send</small></button>
   </nav>
 </div>
-<div id="toast" class="toast"></div>
 <script>
 (function(){
   'use strict';
   const KEY='mmm.pocket.lite.v1';
-  let timer=0, toastTimer=0;
+  let timer=0;
   let undoBuffer=null;
   let flashId=null;
   let state=load();
@@ -421,19 +393,22 @@ button{cursor:pointer}
     timer=setTimeout(()=>localStorage.setItem(KEY,JSON.stringify({...state,updatedAt:Date.now()})),80);
   }
   function esc(v){return String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-  function toast(msg,undo=false){
-    const el=document.getElementById('toast');
-    el.innerHTML=esc(msg)+(undo?' <button class="toast-undo" data-act="undo-delete">元に戻す</button>':'');
-    el.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer=setTimeout(()=>el.classList.remove('show'),undo?3600:1300);
+  // 小さい画面では、操作後のポップアップ通知は出さない。
+  // 追加・削除・選択などは、画面上の変化そのものをフィードバックにする。
+  function toast(){ /* no popup */ }
+  function pulseButton(btn,label){
+    if(!btn) return;
+    const original=btn.textContent;
+    btn.textContent=label;
+    btn.disabled=true;
+    setTimeout(()=>{btn.textContent=original;btn.disabled=false},720);
   }
   function snapshot(){return {title:state.title,mode:state.mode,selected:[...state.selected],items:state.items.map(i=>({...i}))}}
   function restoreUndo(){
-    if(!undoBuffer){toast('戻せる操作がありません');return}
+    if(!undoBuffer) return;
     state={...state,...undoBuffer};
     undoBuffer=null;
-    reindex(); save(); render(); toast('元に戻しました');
+    reindex(); save(); render();
   }
   function selectedSet(){return new Set(state.selected.filter(id=>state.items.some(i=>i.id===id)))}
   function item(id){return state.items.find(i=>i.id===id)}
@@ -464,7 +439,7 @@ button{cursor:pointer}
       state.selected=[next.id];
     }
     flashId=next.id;
-    reindex(); save(); render(); toast(parent?'子階層に追加':'ADD');
+    reindex(); save(); render();
     setTimeout(()=>{if(flashId===next.id) flashId=null},820);
     setTimeout(()=>document.getElementById('add')?.focus(),30);
     return next;
@@ -473,7 +448,7 @@ button{cursor:pointer}
     const input=document.getElementById('add');
     const text=input?.value||'';
     const parentId=asChild?singleSelectedId():null;
-    if(asChild && !parentId){toast('親を1件だけ選んで');return}
+    if(asChild && !parentId) return
     const added=add(text,parentId);
     if(added && input) input.value='';
   }
@@ -490,7 +465,7 @@ button{cursor:pointer}
     if(!item(id)) return;
     undoBuffer=snapshot();
     state.items=state.items.filter(i=>i.id!==id);
-    reindex(); save(); render(); toast('1件削除しました',true);
+    reindex(); save(); render();
   }
   function move(id,d){
     const i=state.items.findIndex(x=>x.id===id), n=i+d;
@@ -507,7 +482,7 @@ button{cursor:pointer}
   }
   function bundle(){
     const set=selectedSet(); const sel=state.items.filter(i=>set.has(i.id));
-    if(sel.length<2){toast('2件以上選んで');return}
+    if(sel.length<2) return
     const title=prompt('選んだメモを、ひとことで言うと？','新しいまとまり');
     if(!title) return;
     const first=Math.min(...sel.map(i=>state.items.findIndex(x=>x.id===i.id)));
@@ -517,7 +492,7 @@ button{cursor:pointer}
     const before=[],after=[];
     state.items.forEach((it,idx)=>{ if(ids.has(it.id)) return; (idx<first?before:after).push(it); });
     const children=sel.map(i=>({...i,depth:Math.min(6,parentDepth+1)}));
-    state.items=[...before,parent,...children,...after]; state.selected=[parent.id]; reindex(); save(); render(); toast('BUNDLE');
+    state.items=[...before,parent,...children,...after]; state.selected=[parent.id]; reindex(); save(); render();
   }
   function stats(){
     const structured=state.items.filter(i=>i.depth>0).length;
@@ -533,18 +508,18 @@ button{cursor:pointer}
     return `<div class="select-tools"><button class="btn" data-act="select-all">全選択</button><button class="btn" data-act="clear-selected">全解除</button><button class="btn danger" data-act="delete-selected">選択削除${c?'（'+c+'）':''}</button></div>`;
   }
   function selectAll(){
-    if(!state.items.length){toast('メモがありません');return}
+    if(!state.items.length) return
     state.selected=state.items.map(i=>i.id);
-    save(); render(); toast('全選択');
+    save(); render();
   }
   function deleteSelected(){
     const set=selectedSet();
-    if(!set.size){toast('削除するメモを選んで');return}
+    if(!set.size) return
     undoBuffer=snapshot();
     const count=set.size;
     state.items=state.items.filter(i=>!set.has(i.id));
     state.selected=[];
-    reindex(); save(); render(); toast(count+'件削除しました',true);
+    reindex(); save(); render();
   }
   function render(){
     document.getElementById('title').value=state.title;
@@ -642,35 +617,41 @@ button{cursor:pointer}
     });
     return {schemaVersion:'1.0',meta:{title:state.title||'Pocket',layoutMode:'horizontal',hideDone:false,focusMode:false,focusNodeId:null,presentationMode:false,coloringMode:'manual'},nodes,edges};
   }
-  async function copy(text,msg){
-    try{await navigator.clipboard.writeText(text);toast(msg||'コピーしました')}catch(e){toast('コピー失敗')}
+  async function copy(text,btn){
+    try{
+      await navigator.clipboard.writeText(text);
+      pulseButton(btn,'コピー済');
+    }catch(e){
+      pulseButton(btn,'失敗');
+    }
   }
-  function saveFile(text,filename,type='application/json'){
+  function saveFile(text,filename,type='application/json',btn=null){
     try{
       const blob=new Blob([text],{type});
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=url; a.download=filename; a.click();
       setTimeout(()=>URL.revokeObjectURL(url),500);
-      toast(filename.endsWith('.txt')?'テキスト保存':'JSON保存');
-    }catch(e){toast('保存失敗')}
+      pulseButton(btn,'保存');
+    }catch(e){
+      pulseButton(btn,'失敗');
+    }
   }
   document.addEventListener('click',e=>{
     const t=e.target;
     if(t.dataset.mode){state.mode=t.dataset.mode;save();render();return}
-    if(t.dataset.act==='undo-delete'){restoreUndo();return}
     if(t.dataset.act==='add-root'){addFromComposer(false);return}
     if(t.dataset.act==='add-child'){addFromComposer(true);return}
     if(t.dataset.act==='bundle'){bundle();return}
     if(t.dataset.act==='select-all'){selectAll();return}
     if(t.dataset.act==='delete-selected'){deleteSelected();return}
     if(t.dataset.act==='clear-selected'){state.selected=[];save();render();return}
-    if(t.dataset.act==='copy-json'){copy(JSON.stringify(toMMM(),null,2),'MMM JSONコピー');return}
-    if(t.dataset.act==='save-json'){saveFile(JSON.stringify(toMMM(),null,2),'mmm-pocket-lite-map.json');return}
-    if(t.dataset.act==='copy-text'){copy(toText(),'テキストコピー');return}
-    if(t.dataset.act==='save-text'){saveFile(toText(),'mmm-pocket-lite.txt','text/plain');return}
-    if(t.dataset.act==='copy-pocket'){copy(JSON.stringify(state,null,2),'Pocket JSONコピー');return}
-    if(t.dataset.act==='reset-all'){if(confirm('Pocket Liteのメモを全削除しますか？')){state=fresh();localStorage.removeItem(KEY);save();render();toast('全削除')}}
+    if(t.dataset.act==='copy-json'){copy(JSON.stringify(toMMM(),null,2),t);return}
+    if(t.dataset.act==='save-json'){saveFile(JSON.stringify(toMMM(),null,2),'mmm-pocket-lite-map.json','application/json',t);return}
+    if(t.dataset.act==='copy-text'){copy(toText(),t);return}
+    if(t.dataset.act==='save-text'){saveFile(toText(),'mmm-pocket-lite.txt','text/plain',t);return}
+    if(t.dataset.act==='copy-pocket'){copy(JSON.stringify(state,null,2),t);return}
+    if(t.dataset.act==='reset-all'){if(confirm('Pocket Liteのメモを全削除しますか？')){state=fresh();localStorage.removeItem(KEY);save();render();}}
     if(t.dataset.child){focusChildTarget(t.dataset.child);return}
     if(t.dataset.del){del(t.dataset.del);return}
     if(t.dataset.up){move(t.dataset.up,-1);return}
