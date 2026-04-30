@@ -28,6 +28,8 @@ button{cursor:pointer}
 .mode-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:0 0 7px}
 .mode-title{font-size:16px;font-weight:950;line-height:1.2}
 .mode-count{color:rgba(159,176,196,.72);font-size:11px;font-weight:850}
+.mode-meta{display:flex;align-items:center;gap:6px}
+.head-select{min-height:30px;min-width:auto;padding:3px 8px;color:rgba(247,251,255,.86);background:rgba(255,255,255,.035)}
 .composer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:12;padding:7px 8px;border-top:1px solid rgba(104,228,255,.12);background:linear-gradient(180deg,rgba(8,13,20,.74),rgba(4,6,10,.98));backdrop-filter:blur(10px)}
 .composer-target{display:none;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;padding:4px 6px;border-radius:999px;background:rgba(255,228,94,.055);color:rgba(255,245,176,.86);font-size:11px;font-weight:850}
 .composer-target.show{display:flex}
@@ -208,6 +210,11 @@ button{cursor:pointer}
     const children=sel.map(i=>({...i,depth:Math.min(6,parentDepth+1)}));
     state.items=[...before,parent,...children,...after]; state.selected=[parent.id]; reindex(); save(); render();
   }
+  function selectAll(){
+    if(!state.items.length) return;
+    state.selected=state.items.map(i=>i.id);
+    save(); render();
+  }
   function deleteSelected(){
     const set=selectedSet(); if(!set.size) return;
     undoBuffer=snapshot();
@@ -240,7 +247,7 @@ button{cursor:pointer}
     else main.innerHTML=send();
     updateComposer();
   }
-  function head(title){const s=stats(); return `<div class="mode-head"><div class="mode-title">${title}</div><div class="mode-count">${s.total}件</div></div>`}
+  function head(title){const s=stats(); const canSelect=(state.mode==='inbox'||state.mode==='outline')&&s.total>0; const selectBtn=canSelect?`<button class="btn mini head-select" data-act="select-all">全選択</button>`:''; return `<div class="mode-head"><div class="mode-title">${title}</div><div class="mode-meta"><div class="mode-count">${s.total}件</div>${selectBtn}</div></div>`}
   function inbox(){return `${head('書く')}${undoStrip()}${bulk()}<div class="list">${state.items.length?state.items.map(inboxItem).join(''):'<div class="empty">まだメモがありません。</div>'}</div>`}
   function hierarchyInputs(i){
     const ind=Math.min(112,i.depth*18);
@@ -282,6 +289,7 @@ button{cursor:pointer}
     if(t.dataset.mode){state.mode=t.dataset.mode;save();render();return}
     if(t.dataset.act==='add-smart'){addFromComposer();return}
     if(t.dataset.act==='bundle'){bundle();return}
+    if(t.dataset.act==='select-all'){selectAll();return}
     if(t.dataset.act==='delete-selected'){deleteSelected();return}
     if(t.dataset.act==='undo'){restoreUndo();return}
     if(t.dataset.act==='clear-selected'){state.selected=[];save();render();return}
